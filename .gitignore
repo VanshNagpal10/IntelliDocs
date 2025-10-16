@@ -32,3 +32,6 @@ yarn-error.log*
 
 # shadcn specific (optional)
 components/ui/.DS_Store
+
+# tmp uploads 
+tmp_uploads/

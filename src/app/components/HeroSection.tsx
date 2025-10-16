@@ -5,7 +5,6 @@ import { Menu, Triangle, X } from "lucide-react";
 
 const menuItems = [
   { name: "Features", href: "#" },
-  { name: "Solution", href: "#" },
   { name: "About", href: "#" },
 ];
 
@@ -26,7 +25,7 @@ export default function HeroSection() {
                 className="flex items-center space-x-2"
               >
                 <Triangle className="w-5 h-5" />
-                <h3 className="text-lg">Document Analyzer</h3>
+                <h3 className="text-lg">IntelliDocs</h3>
               </Link>
 
               <button

@@ -7,27 +7,46 @@ import { Button } from "./components/ui/button";
 import { Loader2, Send } from "lucide-react";
 import { useState } from "react";
 
-
-
-
 export default function Home() {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [docIds, setDocIds] = useState<string[]>([]);
 
   const handleSubmit = async () => {
     if (!query.trim()) return;
     
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsLoading(false);
+    if (docIds.length === 0) {
+      alert("Please upload at least one document first");
+      return;
+    }
     
-    // Reset query after submission
-    setQuery("");
+    setIsLoading(true);
+    setAnswer("");
+    
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ docIds, question: query }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to get answer");
+      }
+
+      const data = await res.json();
+      setAnswer(data.answer);
+    } catch (error: any) {
+      setAnswer(`Error: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
@@ -56,10 +75,10 @@ export default function Home() {
                 Upload Documents
               </h2>
               <p className="text-sm text-muted-foreground">
-                Upload PDFs, images, or scanned documents
+                Upload PDFs, images, or scanned documents (supports handwritten text)
               </p>
             </div>
-            <DocumentUploader />
+            <DocumentUploader onFilesChange={setDocIds} />
           </div>
 
           <div className="space-y-6">
@@ -75,8 +94,7 @@ export default function Home() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ask a Question</label>
                 <p className="text-xs text-muted-foreground">
-                  Example: "How many times does the word 'AI' appear?" or "Count
-                  the total number of words"
+                  Example: "How many times does the word 'Vansh' appear?" or "Summarize the main points" or "On which lines does 'AI' appear?"
                 </p>
               </div>
               <div className="relative">
@@ -90,7 +108,7 @@ export default function Home() {
                 />
                 <Button
                   onClick={handleSubmit}
-                  disabled={!query.trim() || isLoading}
+                  disabled={!query.trim() || isLoading || docIds.length === 0}
                   size="icon"
                   className="absolute bottom-3 right-3"
                 >
@@ -112,6 +130,15 @@ export default function Home() {
                 </kbd>{" "}
                 for new line
               </p>
+
+              {answer && (
+                <div className="mt-6 p-6 rounded-lg border bg-card">
+                  <h3 className="text-sm font-semibold mb-3 text-primary">Answer:</h3>
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap text-sm">{answer}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
