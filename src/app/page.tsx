@@ -58,7 +58,6 @@ export default function Home() {
 
       <main className="max-w-5xl mx-auto px-6 py-16">
         <div className="space-y-12">
-          {/* Header */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold tracking-tight">
               Intelligent Document Analyzer

@@ -5,7 +5,7 @@ import { v4 as uuid } from "uuid";
 import tesseract from "node-tesseract-ocr";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
-// import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const TMP_DIR = path.join(process.cwd(), "tmp_uploads");
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
@@ -18,28 +18,28 @@ function saveStore() {
   fs.writeFileSync(STORE_PATH, JSON.stringify(STORE, null, 2));
 }
 
-// async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-//   try {
-//     const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
-//     const pdfDocument = await loadingTask.promise;
+async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  try {
+    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+    const pdfDocument = await loadingTask.promise;
     
-//     const textContent: string[] = [];
+    const textContent: string[] = [];
     
-//     for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-//       const page = await pdfDocument.getPage(pageNum);
-//       const content = await page.getTextContent();
-//       const pageText = content.items
-//         .map((item: any) => item.str)
-//         .join(' ');
-//       textContent.push(pageText);
-//     }
+    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+      const page = await pdfDocument.getPage(pageNum);
+      const content = await page.getTextContent();
+      const pageText = content.items
+        .map((item: any) => item.str)
+        .join(' ');
+      textContent.push(pageText);
+    }
     
-//     return textContent.join('\n');
-//   } catch (error) {
-//     console.error("PDF extraction error:", error);
-//     return "";
-//   }
-// }
+    return textContent.join('\n');
+  } catch (error) {
+    console.error("PDF extraction error:", error);
+    return "";
+  }
+}
 
 
 
