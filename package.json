@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.11.3",
     "@radix-ui/react-toast": "^1.2.15",
     "@supabase/supabase-js": "^2.75.0",
     "class-variance-authority": "^0.7.1",
@@ -21,7 +22,9 @@
     "node-tesseract-ocr": "^2.2.1",
     "officeparser": "^5.2.1",
     "openai": "^6.3.0",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.3.12",
+    "pdf-parser": "^1.0.5",
     "pdfjs-dist": "^5.4.296",
     "react": "19.1.0",
     "react-dom": "19.1.0",

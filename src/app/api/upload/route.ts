@@ -1,11 +1,11 @@
+export const runtime = "nodejs";
 import fs from "fs";
 import path from "path";
 import { v4 as uuid } from "uuid";
-import { extractText } from "unpdf";
 import tesseract from "node-tesseract-ocr";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
-import officeparser from "officeparser";
+// import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const TMP_DIR = path.join(process.cwd(), "tmp_uploads");
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
@@ -18,28 +18,29 @@ function saveStore() {
   fs.writeFileSync(STORE_PATH, JSON.stringify(STORE, null, 2));
 }
 
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  try {
-    const uint8Array = new Uint8Array(buffer);
-    const result = await extractText(uint8Array);
+// async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+//   try {
+//     const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
+//     const pdfDocument = await loadingTask.promise;
     
-    // Handle different return formats from unpdf
-    if (typeof result === 'string') {
-      return result;
-    }
-    if (result && typeof result.text === 'string') {
-      return result.text;
-    }
-    if (Array.isArray(result)) {
-      return result.join('\n');
-    }
+//     const textContent: string[] = [];
     
-    return "";
-  } catch (error) {
-    console.error("PDF extraction error:", error);
-    return "";
-  }
-}
+//     for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+//       const page = await pdfDocument.getPage(pageNum);
+//       const content = await page.getTextContent();
+//       const pageText = content.items
+//         .map((item: any) => item.str)
+//         .join(' ');
+//       textContent.push(pageText);
+//     }
+    
+//     return textContent.join('\n');
+//   } catch (error) {
+//     console.error("PDF extraction error:", error);
+//     return "";
+//   }
+// }
+
 
 
 async function extractTextFromImage(filePath: string): Promise<string> {
