@@ -23,7 +23,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No documents uploaded. Please upload documents first." }, { status: 400 });
     }
 
-    // Collect all document texts
     let combinedText = "";
     const documentInfo: any[] = [];
 
@@ -49,7 +48,6 @@ export async function POST(req: Request) {
 
     console.log(`Processing question for ${documentInfo.length} document(s):`, question);
 
-    // Use OpenAI with GitHub Token (as configured in your ask route)
     if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json({ 
         error: "AI service not configured. Please set GITHUB_TOKEN in .env.local" 
@@ -82,7 +80,7 @@ ${documentInfo.map(d => `- ${d.fileName} (${d.lineCount} lines, ${d.wordCount} w
           content: `Here is the full content of all documents:\n${combinedText}\n\nQuestion: ${question}` 
         },
       ],
-      temperature: 0.3, // Lower temperature for more factual responses
+      temperature: 0.3, 
       max_tokens: 1000,
     });
 

@@ -31,7 +31,7 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-  }, []);
+  }, [files]);
 
   const uploadFile = async (file: File): Promise<UploadedFile> => {
     const tempId = Math.random().toString(36).substr(2, 9);
@@ -78,6 +78,8 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
   const processFiles = async (filesToProcess: File[]) => {
     const acceptedTypes = [
       "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "image/jpeg",
       "image/jpg",
       "image/png",
@@ -85,16 +87,17 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
       "image/bmp",
       "image/webp"
     ];
-
+  
     const validFiles = filesToProcess.filter((file) =>
-      acceptedTypes.includes(file.type) || /\.(pdf|jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name)
+      acceptedTypes.includes(file.type) || 
+      /\.(pdf|jpg|jpeg|png|gif|bmp|webp|doc|docx|txt|ppt|pptx)$/i.test(file.name)
     );
-
+  
     if (validFiles.length === 0) {
-      alert("Please upload PDF or image files only");
+      alert("Please upload PDF, DOCX, TXT, PPTX, or image files");
       return;
     }
-
+  
     const uploadingFiles: UploadedFile[] = validFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       docId: "",
@@ -103,31 +106,28 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
       type: file.type,
       status: "uploading",
     }));
-
+  
     setFiles((prev) => [...prev, ...uploadingFiles]);
-
+  
     // Upload files in parallel
     const uploadPromises = validFiles.map(uploadFile);
     const results = await Promise.all(uploadPromises);
-
-    // Update files with results
+  
+    // Update files with results AND notify parent
     setFiles((prev) => {
       const updated = prev.filter(f => f.status !== "uploading");
-      return [...updated, ...results];
+      const newState = [...updated, ...results];
+      
+      // Notify parent component with ALL successful docIds from updated state
+      if (onFilesChange) {
+        const allSuccessfulDocIds = newState
+          .filter(f => f.status === "success")
+          .map(f => f.docId);
+        onFilesChange(allSuccessfulDocIds);
+      }
+      
+      return newState;
     });
-
-    // Notify parent component of successful uploads
-    const successfulDocIds = results
-      .filter(f => f.status === "success")
-      .map(f => f.docId);
-    
-    if (onFilesChange) {
-      const allSuccessfulDocIds = [
-        ...files.filter(f => f.status === "success").map(f => f.docId),
-        ...successfulDocIds
-      ];
-      onFilesChange(allSuccessfulDocIds);
-    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -184,7 +184,7 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
           type="file"
           id="file-upload"
           className="hidden"
-          accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+          accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp,.doc,.docx,.txt,.ppt,.pptx"
           multiple
           onChange={handleFileInput}
         />
@@ -200,7 +200,7 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
             or click to browse
           </p>
           <p className="text-xs text-muted-foreground">
-            Supports PDF, JPG, PNG, and other image formats
+            Supports PDF, JPG, PNG, DOC, DOCX, TXT, PPT, PPTX, and other image formats
           </p>
         </label>
       </div>

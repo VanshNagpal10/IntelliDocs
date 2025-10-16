@@ -4,6 +4,8 @@ import { v4 as uuid } from "uuid";
 import { extractText } from "unpdf";
 import tesseract from "node-tesseract-ocr";
 import { NextResponse } from "next/server";
+import mammoth from "mammoth";
+import officeparser from "officeparser";
 
 const TMP_DIR = path.join(process.cwd(), "tmp_uploads");
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
@@ -18,13 +20,27 @@ function saveStore() {
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    const { text } = await extractText(buffer);
-    return text || "";
+    const uint8Array = new Uint8Array(buffer);
+    const result = await extractText(uint8Array);
+    
+    // Handle different return formats from unpdf
+    if (typeof result === 'string') {
+      return result;
+    }
+    if (result && typeof result.text === 'string') {
+      return result.text;
+    }
+    if (Array.isArray(result)) {
+      return result.join('\n');
+    }
+    
+    return "";
   } catch (error) {
     console.error("PDF extraction error:", error);
     return "";
   }
 }
+
 
 async function extractTextFromImage(filePath: string): Promise<string> {
   const config = {
@@ -38,6 +54,25 @@ async function extractTextFromImage(filePath: string): Promise<string> {
     return text;
   } catch (error) {
     console.error("OCR error:", error);
+    return "";
+  }
+}
+
+async function extractTextFromDOCX(buffer: Buffer): Promise<string> {
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value || "";
+  } catch (error) {
+    console.error("DOCX extraction error:", error);
+    return "";
+  }
+}
+
+async function extractTextFromTXT(buffer: Buffer): Promise<string> {
+  try {
+    return buffer.toString('utf-8');
+  } catch (error) {
+    console.error("TXT extraction error:", error);
     return "";
   }
 }
@@ -93,7 +128,33 @@ export async function POST(req: Request) {
           error: "Failed to perform OCR. Make sure Tesseract is installed on your system." 
         }, { status: 500 });
       }
-    } else {
+    } 
+    else if (
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.endsWith(".docx")
+    ) {
+      try {
+        text = await extractTextFromDOCX(buffer);
+        extractionMethod = "DOCX text extraction";
+      } catch (e) {
+        console.error("DOCX extraction failed:", e);
+        return NextResponse.json({ 
+          error: "Failed to extract text from DOCX file" 
+        }, { status: 500 });
+      }
+    }
+    else if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+      try {
+        text = await extractTextFromTXT(buffer);
+        extractionMethod = "Plain text";
+      } catch (e) {
+        console.error("TXT extraction failed:", e);
+        return NextResponse.json({ 
+          error: "Failed to read text file" 
+        }, { status: 500 });
+      }
+    }
+    else {
       return NextResponse.json({ 
         error: "Unsupported file type. Please upload PDF or image files." 
       }, { status: 400 });
