@@ -16,7 +16,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Question is required" }, { status: 400 });
     }
 
-    // Support both single docId and array of docIds
     const idsToProcess = Array.isArray(docIds) ? docIds : (docIds ? [docIds] : []);
     
     if (idsToProcess.length === 0) {

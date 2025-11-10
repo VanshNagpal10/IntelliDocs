@@ -5,13 +5,19 @@ import { v4 as uuid } from "uuid";
 import tesseract from "node-tesseract-ocr";
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+import { extractText } from "unpdf";
+
+// import { PDFParse } from 'pdf-parse';
+
+// import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+
+// pdfjsLib.GlobalWorkerOptions.workerSrc = require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs');
 
 const TMP_DIR = path.join(process.cwd(), "tmp_uploads");
 if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
 const STORE_PATH = path.join(TMP_DIR, "store.json");
-let STORE: Record<string, any> = {};
+let STORE = {};
 if (fs.existsSync(STORE_PATH)) STORE = JSON.parse(fs.readFileSync(STORE_PATH, "utf8"));
 
 function saveStore() {
@@ -20,26 +26,16 @@ function saveStore() {
 
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
-    const pdfDocument = await loadingTask.promise;
-    
-    const textContent: string[] = [];
-    
-    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
-      const page = await pdfDocument.getPage(pageNum);
-      const content = await page.getTextContent();
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(' ');
-      textContent.push(pageText);
-    }
-    
-    return textContent.join('\n');
-  } catch (error) {
-    console.error("PDF extraction error:", error);
-    return "";
+    const uint8Array = new Uint8Array(buffer);
+    const { text } = await extractText(uint8Array, { mergePages: true });
+    console.log(text);
+    return text || "";
+  } catch (err) {
+    console.error("PDF extraction failed:", err);
+    throw new Error("Failed to extract text from PDF");
   }
 }
+
 
 
 
@@ -99,25 +95,17 @@ export async function POST(req: Request) {
     
     if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
       try {
-        text = await extractTextFromPDF(buffer);
-        extractionMethod = "PDF text extraction";
+        text  = await extractTextFromPDF(buffer);
         
         if (!text || text.trim().length < 10) {
-          console.log("PDF appears to be scanned, using OCR...");
-          text = await extractTextFromImage(filePath);
-          extractionMethod = "OCR (scanned PDF)";
-        }
-      } catch (e) {
-        console.log("PDF extraction failed, trying OCR:", e);
-        try {
-          text = await extractTextFromImage(filePath);
-          extractionMethod = "OCR (fallback)";
-        } catch (ocrError) {
-          console.error("OCR also failed:", ocrError);
           return NextResponse.json({ 
-            error: "Failed to extract text. Make sure Tesseract is installed on your system." 
-          }, { status: 500 });
+            error: "No text could be extracted from this PDF." 
+          }, { status: 400 });
         }
+      } catch (error: any) {
+        return NextResponse.json({ 
+          error: `Failed to extract text from PDF: ${error.message}` 
+        }, { status: 500 });
       }
     } else if (file.type.startsWith("image/") || /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(file.name)) {
       try {
@@ -167,18 +155,16 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // Normalize and split lines
     const rawLines = text.split(/\r?\n/);
     const lines = rawLines.map((line, idx) => ({ 
       lineNo: idx + 1, 
       text: line 
     }));
 
-    // Count words and characters
+
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
     const charCount = text.length;
 
-    // Store in in-memory store and persist to store.json
     STORE[docId] = {
       id: docId,
       fileName: file.name,

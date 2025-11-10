@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Upload, File, X, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 
@@ -22,6 +22,16 @@ interface DocumentUploaderProps {
 export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Notify parent whenever files change
+  useEffect(() => {
+    if (onFilesChange) {
+      const successfulDocIds = files
+        .filter(f => f.status === "success")
+        .map(f => f.docId);
+      onFilesChange(successfulDocIds);
+    }
+  }, [files, onFilesChange]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -113,20 +123,10 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
     const uploadPromises = validFiles.map(uploadFile);
     const results = await Promise.all(uploadPromises);
   
-    // Update files with results AND notify parent
+    // Update files with results (useEffect will notify parent)
     setFiles((prev) => {
       const updated = prev.filter(f => f.status !== "uploading");
-      const newState = [...updated, ...results];
-      
-      // Notify parent component with ALL successful docIds from updated state
-      if (onFilesChange) {
-        const allSuccessfulDocIds = newState
-          .filter(f => f.status === "success")
-          .map(f => f.docId);
-        onFilesChange(allSuccessfulDocIds);
-      }
-      
-      return newState;
+      return [...updated, ...results];
     });
   };
 
@@ -146,18 +146,7 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
   };
 
   const removeFile = (id: string) => {
-    setFiles((prev) => {
-      const updated = prev.filter((file) => file.id !== id);
-      
-      if (onFilesChange) {
-        const successfulDocIds = updated
-          .filter(f => f.status === "success")
-          .map(f => f.docId);
-        onFilesChange(successfulDocIds);
-      }
-      
-      return updated;
-    });
+    setFiles((prev) => prev.filter((file) => file.id !== id));
   };
 
   const formatFileSize = (bytes: number) => {
