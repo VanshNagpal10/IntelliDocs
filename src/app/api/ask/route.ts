@@ -1,43 +1,42 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import OpenAI from "openai";
-
-const TMP_DIR = path.join(process.cwd(), "tmp_uploads");
-const STORE_PATH = path.join(TMP_DIR, "store.json");
-let STORE: Record<string, any> = {};
-if (fs.existsSync(STORE_PATH)) STORE = JSON.parse(fs.readFileSync(STORE_PATH, "utf8"));
+import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
   try {
     const { docIds, question } = await req.json();
-    
+
     if (!question || !question.trim()) {
       return NextResponse.json({ error: "Question is required" }, { status: 400 });
     }
 
     const idsToProcess = Array.isArray(docIds) ? docIds : (docIds ? [docIds] : []);
-    
+
     if (idsToProcess.length === 0) {
       return NextResponse.json({ error: "No documents uploaded. Please upload documents first." }, { status: 400 });
     }
 
-    let combinedText = "";
-    const documentInfo: any[] = [];
+    // Fetch documents from Supabase
+    const { data: documents, error: fetchError } = await supabase
+      .from('documents')
+      .select('*')
+      .in('id', idsToProcess);
 
-    for (const docId of idsToProcess) {
-      if (!STORE[docId]) {
-        console.warn(`Document ${docId} not found in store`);
-        continue;
-      }
-      
-      const doc = STORE[docId];
-      combinedText += `\n\n=== Document: ${doc.fileName} ===\n${doc.extractedText}`;
+    if (fetchError || !documents) {
+      console.error("Error fetching documents:", fetchError);
+      return NextResponse.json({ error: "Failed to fetch documents" }, { status: 500 });
+    }
+
+    let combinedText = "";
+    const documentInfo: { id: string; fileName: string; wordCount: number; lineCount: number }[] = [];
+
+    for (const doc of documents) {
+      combinedText += `\n\n=== Document: ${doc.original_name} ===\n${doc.extracted_text}`;
       documentInfo.push({
-        id: docId,
-        fileName: doc.fileName,
-        wordCount: doc.wordCount,
-        lineCount: doc.lines?.length || 0
+        id: doc.id,
+        fileName: doc.original_name,
+        wordCount: doc.word_count,
+        lineCount: doc.lines_count
       });
     }
 
@@ -48,8 +47,8 @@ export async function POST(req: Request) {
     console.log(`Processing question for ${documentInfo.length} document(s):`, question);
 
     if (!process.env.GITHUB_TOKEN) {
-      return NextResponse.json({ 
-        error: "AI service not configured. Please set GITHUB_TOKEN in .env.local" 
+      return NextResponse.json({
+        error: "AI service not configured. Please set GITHUB_TOKEN in .env.local"
       }, { status: 500 });
     }
 
@@ -74,12 +73,12 @@ ${documentInfo.map(d => `- ${d.fileName} (${d.lineCount} lines, ${d.wordCount} w
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        { 
-          role: "user", 
-          content: `Here is the full content of all documents:\n${combinedText}\n\nQuestion: ${question}` 
+        {
+          role: "user",
+          content: `Here is the full content of all documents:\n${combinedText}\n\nQuestion: ${question}`
         },
       ],
-      temperature: 0.3, 
+      temperature: 0.3,
       max_tokens: 1000,
     });
 
@@ -87,16 +86,17 @@ ${documentInfo.map(d => `- ${d.fileName} (${d.lineCount} lines, ${d.wordCount} w
 
     console.log(`Answer generated successfully`);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       answer,
       documents: documentInfo,
       question
     });
 
-  } catch (err: any) {
+  } catch (err) {
     console.error("Ask error:", err);
-    return NextResponse.json({ 
-      error: err.message || "Failed to process question" 
+    const errorMessage = err instanceof Error ? err.message : "Failed to process question";
+    return NextResponse.json({
+      error: errorMessage
     }, { status: 500 });
   }
 }

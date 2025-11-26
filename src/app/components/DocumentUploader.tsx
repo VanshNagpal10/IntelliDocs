@@ -41,7 +41,7 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-  }, [files]);
+  }, []);
 
   const uploadFile = async (file: File): Promise<UploadedFile> => {
     const tempId = Math.random().toString(36).substr(2, 9);
@@ -72,7 +72,8 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
         linesCount: data.linesCount,
         wordCount: data.wordCount,
       };
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Upload failed";
       return {
         id: tempId,
         docId: "",
@@ -80,12 +81,12 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
         size: file.size,
         type: file.type,
         status: "error",
-        error: error.message,
+        error: errorMessage,
       };
     }
   };
 
-  const processFiles = async (filesToProcess: File[]) => {
+  const processFiles = useCallback(async (filesToProcess: File[]) => {
     const acceptedTypes = [
       "application/pdf",
       "application/msword",
@@ -128,14 +129,14 @@ export function DocumentUploader({ onFilesChange }: DocumentUploaderProps) {
       const updated = prev.filter(f => f.status !== "uploading");
       return [...updated, ...results];
     });
-  };
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const droppedFiles = Array.from(e.dataTransfer.files);
     processFiles(droppedFiles);
-  }, []);
+  }, [processFiles]);
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {

@@ -38,8 +38,9 @@ export default function Home() {
 
       const data = await res.json();
       setAnswer(data.answer);
-    } catch (error: any) {
-      setAnswer(`Error: ${error.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to get answer";
+      setAnswer(`Error: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +94,7 @@ export default function Home() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Ask a Question</label>
                 <p className="text-xs text-muted-foreground">
-                  Example: "How many times does the word 'Vansh' appear?" or "Summarize the main points" or "On which lines does 'AI' appear?"
+                  Example: &quot;How many times does the word &apos;Vansh&apos; appear?&quot; or &quot;Summarize the main points&quot; or &quot;On which lines does &apos;AI&apos; appear?&quot;
                 </p>
               </div>
               <div className="relative">
