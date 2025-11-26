@@ -114,7 +114,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Deployment
 
-[text](https://intellidocsai.vercel.app)
+### Live Demo
+**[View Live Demo](https://intellidocsai.vercel.app)**
+
+
 
 ## License
 
